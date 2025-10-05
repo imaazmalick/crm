@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  STORE_MANAGER
+  EMPLOYEE
+}
+
+enum OrderStatus {
+  COMPLETED
+  RETURNED
+  PARTIAL_RETURN
+}
+
+model User {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  email            String    @unique
+  password         String
+  name             String
+  role             UserRole
+  storeId          String?   @db.ObjectId
+  store            Store?    @relation(fields: [storeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  isActive         Boolean   @default(true)
+  emailVerified    Boolean   @default(false)
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  otpCode          String?
+  otpExpiry        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  createdStores Store[]  @relation("StoreCreator")
+  sales         Sale[]
+  returns       Return[]
+
+  @@map("users")
+}
+
+model Store {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  email       String
+  phone       String
+  address     String
+  city        String
+  state       String
+  zipCode     String
+  isActive    Boolean  @default(true)
+  createdById String   @db.ObjectId
+  createdBy   User     @relation("StoreCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  employees User[]
+  products  Product[]
+  sales     Sale[]
+  returns   Return[]
+
+  @@map("stores")
+}
+
+model Product {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  sku         String   @unique
+  barcode     String?
+  price       Float
+  cost        Float
+  quantity    Int
+  minStock    Int      @default(10)
+  category    String
+  image       String?
+  isActive    Boolean  @default(true)
+  storeId     String   @db.ObjectId
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  saleItems   SaleItem[]
+  returnItems ReturnItem[]
+
+  @@map("products")
+}
+
+model Sale {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  saleNumber    String      @unique
+  subtotal      Float
+  tax           Float       @default(0)
+  posFee        Float
+  total         Float
+  paymentMethod String
+  status        OrderStatus @default(COMPLETED)
+  customerName  String?
+  customerEmail String?
+  customerPhone String?
+  notes         String?
+  storeId       String      @db.ObjectId
+  store         Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  employeeId    String      @db.ObjectId
+  employee      User        @relation(fields: [employeeId], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  items   SaleItem[]
+  returns Return[]
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  quantity  Int
+  price     Float
+  subtotal  Float
+  saleId    String   @db.ObjectId
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String   @db.ObjectId
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("sale_items")
+}
+
+model Return {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  returnNumber String   @unique
+  reason       String
+  refundAmount Float
+  restockFee   Float    @default(0)
+  totalRefund  Float
+  status       String   @default("COMPLETED")
+  saleId       String   @db.ObjectId
+  sale         Sale     @relation(fields: [saleId], references: [id])
+  storeId      String   @db.ObjectId
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  employeeId   String   @db.ObjectId
+  employee     User     @relation(fields: [employeeId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  items ReturnItem[]
+
+  @@map("returns")
+}
+
+model ReturnItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  quantity  Int
+  price     Float
+  subtotal  Float
+  returnId  String   @db.ObjectId
+  return    Return   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  productId String   @db.ObjectId
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("return_items")
+}
+
+model SystemSettings {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  posFeeAmount   Float    @default(50)
+  taxPercent     Float    @default(0)
+  currency       String   @default("PKR")
+  companyName    String   @default("CRM System")
+  companyEmail   String?
+  companyPhone   String?
+  companyAddress String?
+  updatedAt      DateTime @updatedAt
+
+  @@map("system_settings")
+}
