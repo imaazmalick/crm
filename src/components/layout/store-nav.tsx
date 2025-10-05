@@ -9,6 +9,7 @@ import {
   Users,
   Settings,
   LogOut,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/actions/auth";
@@ -18,6 +19,11 @@ const navItems = [
     title: "Dashboard",
     href: "/store",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Sales History",
+    href: "/store/sales",
+    icon: History,
   },
   {
     title: "Inventory",
